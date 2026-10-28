@@ -141,16 +141,17 @@ signed MSIX:
 4. In Dev Home, select the app, press the View button, choose **View details**
    and set its type to **Game**: as an app it gets only part of the processor
    and memory.
-5. Start the app once: without a ROM it says where to put one. In the Device
-   Portal open **File explorer** → LocalAppData →
-   `io.github.clickingmaster.ssrecomp_…` → **LocalState**, upload your ROM
-   there (any name ending in `.nds`) and start the app again.
+5. In the Device Portal open **File explorer** → **DevelopmentFiles** and
+   upload your ROM there (any name ending in `.nds`, also in a folder inside
+   it). The first time the app starts it copies the ROM into its own folder,
+   `LocalState` (LocalAppData → `io.github.clickingmaster.ssrecomp_…`), where you
+   can also put it directly.
 
 **Without a Windows PC (the launcher):** GitHub builds a version of the Xbox app
 without any of the game in it (Actions tab → **Xbox launcher** → the newest run →
 the `SoulSilver-ssrecomp-xbox-launcher` download). It needs no ROM to build, so it
 can be downloaded on a phone and installed through the Device Portal as in steps
-3–5; your ROM still goes in the app's `LocalState` folder. It runs the game on
+3–5; your ROM goes in DevelopmentFiles as there. It runs the game on
 melonDS's ordinary emulator instead of the recompiled code, so it is slower, and
 the single-screen view cannot tell the game's screens apart (it keeps one layout).
 

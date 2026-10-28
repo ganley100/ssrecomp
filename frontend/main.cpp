@@ -38,6 +38,7 @@
 #endif
 #ifdef SSR_UWP
 #include <windows.h>
+#include <fileapifromapp.h>
 #include <roapi.h>
 // SDL declares these only for a WINAPI_FAMILY_APP build (__WINRT__), which the C++
 // library no longer compiles in; they are in the SDL2.dll built for UWP.
@@ -1043,6 +1044,34 @@ static bool ReadSnapshot(NDS& nds, const std::string& path, uint32_t* frame)
     return true;
 }
 
+#ifdef SSR_UWP
+// The first .nds file in dir or (depth levels down) in a folder in it; empty if none.
+static std::wstring FindDevelopmentRom(const std::wstring& dir, int depth)
+{
+    WIN32_FIND_DATAW fd;
+    HANDLE h = FindFirstFileExFromAppW((dir + L"\\*").c_str(), FindExInfoBasic, &fd, FindExSearchNameMatch, nullptr, 0);
+    if (h == INVALID_HANDLE_VALUE) return {};
+    std::wstring found;
+    std::vector<std::wstring> folders;
+    do
+    {
+        const std::wstring name = fd.cFileName;
+        if (name == L"." || name == L"..") continue;
+        if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) folders.push_back(dir + L"\\" + name);
+        else if (name.size() > 4 && _wcsicmp(name.c_str() + name.size() - 4, L".nds") == 0)
+        {
+            found = dir + L"\\" + name;
+            break;
+        }
+    } while (FindNextFileW(h, &fd));
+    FindClose(h);
+    if (depth > 0)
+        for (const auto& f : folders)
+            if (found.empty()) found = FindDevelopmentRom(f, depth - 1);
+    return found;
+}
+#endif
+
 int main(int argc, char** argv)
 {
     Options opt;
@@ -1102,9 +1131,24 @@ int main(int argc, char** argv)
             }
         if (rom.empty())
         {
-            const std::string say = "Put your Pokemon SoulSilver (US) ROM, a file ending in .nds, in this app's "
-                "folder and start it again:\n\n" + dir + "\n\nOn an Xbox: Device Portal -> File explorer -> "
-                "LocalAppData -> io.github.clickingmaster.ssrecomp_... -> LocalState.";
+            // On a Developer Mode Xbox the Device Portal's file explorer can also upload into
+            // DevelopmentFiles, which is easier to find. Only "FromApp" file functions reach
+            // it (with the broadFileSystemAccess capability); the ROM is copied into the
+            // app's folder once, so that everything else reads it as before.
+            const std::wstring dev = FindDevelopmentRom(L"D:\\DevelopmentFiles", 1);
+            const std::string copy = dir + "\\rom.nds";
+            if (!dev.empty())
+            {
+                fprintf(stderr, "copying the ROM from %s\n", std::filesystem::path(dev).u8string().c_str());
+                if (CopyFileFromAppW(dev.c_str(), std::filesystem::u8path(copy).wstring().c_str(), FALSE)) rom = copy;
+                else fprintf(stderr, "could not copy it (error %lu)\n", GetLastError());
+            }
+        }
+        if (rom.empty())
+        {
+            const std::string say = "Put your Pokemon SoulSilver (US) ROM, a file ending in .nds, in the Xbox's "
+                "DevelopmentFiles folder (Device Portal -> File explorer -> DevelopmentFiles) or in this app's "
+                "folder, and start it again:\n\n" + dir;
             fprintf(stderr, "%s\n", say.c_str());
             SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "SoulSilver: no ROM yet", say.c_str(), nullptr);
             return 1;

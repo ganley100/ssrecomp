@@ -5,7 +5,8 @@
 - **Xbox (experimental):** the setup program can build the game as an app for an
   Xbox One or Series console in Developer Mode (**Build for Xbox**, or `--xbox`,
   on Windows with Visual Studio). It is compiled with clang-cl and packed into a
-  signed MSIX without the ROM, which you copy to the console yourself; see "Xbox"
+  signed MSIX without the ROM, which you upload to the console's DevelopmentFiles
+  folder through the Device Portal; see "Xbox"
   in the README for installing it. Its tiles can be made from a picture of your
   own (`xbox/icon.png` or `.jpg`, or `--xbox-icon`).
 - **Xbox launcher:** a version of the Xbox app without the game in it, built by

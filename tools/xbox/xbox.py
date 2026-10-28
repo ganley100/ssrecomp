@@ -283,7 +283,8 @@ def manifest(version):
     return f'''<?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
          xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
-         IgnorableNamespaces="uap">
+         xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+         IgnorableNamespaces="uap rescap">
   <Identity Name="{PACKAGE_NAME}" Publisher="{PUBLISHER}" Version="{version}" ProcessorArchitecture="x64"/>
   <Properties>
     <DisplayName>SoulSilver</DisplayName>
@@ -307,6 +308,10 @@ def manifest(version):
       </uap:VisualElements>
     </Application>
   </Applications>
+  <Capabilities>
+    <!-- For the ROM in the Xbox's DevelopmentFiles folder (see main.cpp). -->
+    <rescap:Capability Name="broadFileSystemAccess"/>
+  </Capabilities>
 </Package>
 '''
 
