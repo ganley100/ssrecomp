@@ -12,6 +12,15 @@ if(POLICY CMP0141)
     # generated game code can go without it on clang-cl as it does with -g0 elsewhere.
     cmake_policy(SET CMP0141 NEW)
 endif()
+if(SSR_UWP)
+    # Only the system libraries a UWP program may use (WindowsApp.lib covers them all), and
+    # the CRT of the Microsoft.VCLibs framework package: the build runs in a "vcvarsall x64
+    # uwp" environment, whose LIB points at the store CRT. Set before project() so that
+    # CMake's own compiler checks link the same way (that CRT needs WindowsApp.lib).
+    set(CMAKE_C_STANDARD_LIBRARIES "WindowsApp.lib" CACHE STRING "")
+    set(CMAKE_CXX_STANDARD_LIBRARIES "WindowsApp.lib" CACHE STRING "")
+    set(CMAKE_TRY_COMPILE_PLATFORM_VARIABLES CMAKE_C_STANDARD_LIBRARIES CMAKE_CXX_STANDARD_LIBRARIES)
+endif()
 project(ssrecomp LANGUAGES C CXX)
 set(SSR_GENERATED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/gen" CACHE PATH "Generated game sources")
 
@@ -44,11 +53,6 @@ if(MSVC)
     set(DIRENT_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/msvc" CACHE PATH "" FORCE)
 endif()
 if(SSR_UWP)
-    # Only the system libraries a UWP program may use (WindowsApp.lib covers them all), and
-    # the CRT of the Microsoft.VCLibs framework package: the build runs in a "vcvarsall x64
-    # uwp" environment, whose LIB points at the store CRT.
-    set(CMAKE_C_STANDARD_LIBRARIES "WindowsApp.lib" CACHE STRING "" FORCE)
-    set(CMAKE_CXX_STANDARD_LIBRARIES "WindowsApp.lib" CACHE STRING "" FORCE)
     # Xbox One's processor has no AVX2.
     set(SSR_PORTABLE_X86 ON CACHE BOOL "" FORCE)
 endif()
