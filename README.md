@@ -146,6 +146,11 @@ signed MSIX:
    `io.github.clickingmaster.ssrecomp_…` → **LocalState**, upload your ROM
    there (any name ending in `.nds`) and start the app again.
 
+**Your own icon:** put a picture (PNG or JPEG, square works best) named
+`icon.png` or `icon.jpg` in the `xbox` folder of the setup program's folder, or
+pass `--xbox-icon <picture>`, and build again; the app's tiles are made from it.
+It stays on your PC and in your package only.
+
 The ROM is not in the MSIX, but the app's code is made from your copy of the
 game, so do not share it either; it works with that ROM only. It is signed with a
 certificate made on your PC and kept in `xbox/`; later builds use it again and

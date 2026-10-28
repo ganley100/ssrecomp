@@ -91,7 +91,9 @@ def uwp(build, gen, vs):
     configure(build / 'uwp', gen, vs, env, '-DSSR_UWP=ON', '-DCMAKE_PREFIX_PATH=' + str(sdl_prefix).replace('\\', '/'))
     msix = xbox.package(str(build / 'uwp' / 'ssrecomp.exe'), str(sdl_prefix / 'bin' / 'SDL2.dll'),
                         str(ROOT / 'tools' / 'appimage' / 'ssrecomp-setup.png'), '0.0.0', str(build / 'package'),
-                        str(build / 'keys'), env, lambda cmd, env=None: run(cmd, env), print)
+                        str(build / 'keys'), env, lambda cmd, env=None: run(cmd, env), print,
+                        # The player's own picture is scaled by Windows: try that path with ours.
+                        picture=str(ROOT / 'tools' / 'appimage' / 'ssrecomp-setup.png'))
     assert os.path.getsize(msix) > 0
     print('clang-cl Xbox (UWP) build and MSIX passed: ' + msix, flush=True)
 

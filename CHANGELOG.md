@@ -6,7 +6,8 @@
   Xbox One or Series console in Developer Mode (**Build for Xbox**, or `--xbox`,
   on Windows with Visual Studio). It is compiled with clang-cl and packed into a
   signed MSIX without the ROM, which you copy to the console yourself; see "Xbox"
-  in the README for installing it.
+  in the README for installing it. Its tiles can be made from a picture of your
+  own (`xbox/icon.png` or `.jpg`, or `--xbox-icon`).
 - The game can be built with clang-cl on Windows, as well as with MSYS2's GCC.
 - The setup program for macOS can now check for updates and update itself from
   the setup window and with `--update`, matching Linux and Windows.

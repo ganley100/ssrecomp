@@ -25,7 +25,8 @@ __pycache__/
 /gen.new/
 /dist/
 .DS_Store
-# The Xbox build: SDL2 for UWP, the signing key, and the MSIX, which contains the game
+# The Xbox build: SDL2 for UWP, the signing key, the player's own tile picture
+# (xbox/icon.*), and the MSIX, which contains the game's code
 /xbox/
 /xbox-package/
 *.msix

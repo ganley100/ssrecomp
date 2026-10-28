@@ -227,6 +227,42 @@ def write_assets(icon_path, folder):
         write_png(os.path.join(folder, name), w, h, tile(icon, w, h, size))
 
 
+def write_assets_from_picture(picture, folder):
+    """The tiles from the player's own picture (PNG, JPEG, BMP...: anything Windows reads),
+    each as large as it fits, keeping its shape. Scaled by Windows (System.Drawing), which
+    reads the formats this file's PNG reader does not."""
+    os.makedirs(folder, exist_ok=True)
+    # "file|width|height" each (nested arrays would be flattened by PowerShell).
+    jobs = ','.join(f'"{os.path.join(folder, n)}|{w}|{h}"' for n, (w, h, _) in ASSETS.items())
+    script = (
+        '$ErrorActionPreference = "Stop"; Add-Type -AssemblyName System.Drawing;'
+        f'$src = [System.Drawing.Image]::FromFile("{os.path.abspath(picture)}");'
+        f'foreach ($j in @({jobs})) {{'
+        '  $f = $j.Split("|"); $w = [int]$f[1]; $h = [int]$f[2];'
+        '  $s = [Math]::Min($w / $src.Width, $h / $src.Height);'
+        '  $dw = [int]($src.Width * $s); $dh = [int]($src.Height * $s);'
+        '  $bmp = New-Object System.Drawing.Bitmap $w, $h;'
+        '  $g = [System.Drawing.Graphics]::FromImage($bmp);'
+        '  $g.InterpolationMode = "HighQualityBicubic"; $g.Clear([System.Drawing.Color]::Transparent);'
+        '  $g.DrawImage($src, [int](($w - $dw) / 2), [int](($h - $dh) / 2), $dw, $dh);'
+        '  $bmp.Save($f[0], [System.Drawing.Imaging.ImageFormat]::Png); $g.Dispose(); $bmp.Dispose() };'
+        '$src.Dispose()')
+    out = subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-Command', script],
+                         capture_output=True, text=True, errors='replace')
+    if out.returncode != 0:
+        raise RuntimeError('Could not make the tiles from ' + picture + ':\n' + (out.stderr or out.stdout)[-2000:])
+
+
+def custom_icon(key_dir):
+    """The player's own picture for the app's tiles, if they put one in key_dir
+    (icon.png, icon.jpg...)."""
+    for ext in ('png', 'jpg', 'jpeg', 'bmp'):
+        path = os.path.join(key_dir, 'icon.' + ext)
+        if os.path.isfile(path):
+            return path
+    return None
+
+
 # ---------------------------------------------------------------------------
 # The package.
 
@@ -313,9 +349,10 @@ def vclibs_package():
     return found[0] if found else None
 
 
-def package(exe, sdl_dll, icon, release, out_dir, key_dir, env, run, log, rom=None):
+def package(exe, sdl_dll, icon, release, out_dir, key_dir, env, run, log, rom=None, picture=None):
     """Packs exe and SDL2.dll (and rom, if given) into a signed MSIX in out_dir; returns
-    its path."""
+    its path. The tiles come from picture (any image, see write_assets_from_picture) or
+    else from icon (an RGBA PNG)."""
     check_imports(exe)
     os.makedirs(key_dir, exist_ok=True)
     os.makedirs(out_dir, exist_ok=True)
@@ -326,7 +363,11 @@ def package(exe, sdl_dll, icon, release, out_dir, key_dir, env, run, log, rom=No
     shutil.copy2(sdl_dll, os.path.join(layout, 'SDL2.dll'))
     if rom:
         shutil.copyfile(rom, os.path.join(layout, 'rom.nds'))
-    write_assets(icon, os.path.join(layout, 'Assets'))
+    if picture:
+        log('Tiles from ' + picture)
+        write_assets_from_picture(picture, os.path.join(layout, 'Assets'))
+    else:
+        write_assets(icon, os.path.join(layout, 'Assets'))
     version = next_version(release or '0.0.0', key_dir)
     with open(os.path.join(layout, 'AppxManifest.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
         f.write(manifest(version))

@@ -6,7 +6,7 @@ machine (nothing of the game is downloaded or shipped) and compiled together wit
 the frontend. Needs Python 3 with Tk, CMake, Ninja, a C++ compiler and the SDL2,
 libpng and zlib development files; the window says what is missing and how to get it.
 
-Without a display: python3 ssrecomp_setup.py --rom <file> [--jobs N] [--android | --xbox]
+Without a display: python3 ssrecomp_setup.py --rom <file> [--jobs N] [--android | --xbox [--xbox-icon <picture>]]
 The packaged program updates itself with --update.
 """
 import glob
@@ -434,7 +434,7 @@ def forget_moved_build(build):
             os.remove(os.path.join(build, 'build.ninja'))
 
 
-def run_steps(rom, jobs, log, progress, android=False, xbox=False):
+def run_steps(rom, jobs, log, progress, android=False, xbox=False, icon=None):
     """Generates and compiles (for Android: and makes the APK; for Xbox: the MSIX).
     log(text) reports a line, progress(fraction, label) the progress (fraction None: only
     the label changes). Raises RuntimeError with a message for the user on failure."""
@@ -505,7 +505,7 @@ def run_steps(rom, jobs, log, progress, android=False, xbox=False):
     if android:
         return android_steps(rom, jobs, log, progress, run)
     if xbox:
-        return xbox_steps(rom, jobs, log, progress, run)
+        return xbox_steps(rom, jobs, log, progress, run, icon)
     progress(0.08, 'Configuring the build')
     forget_moved_build(BUILD)
     prefix = windows_prefix()
@@ -572,7 +572,7 @@ def android_steps(rom, jobs, log, progress, run):
     progress(1.0, 'Done: ' + ANDROID_APK)
 
 
-def xbox_steps(rom, jobs, log, progress, run):
+def xbox_steps(rom, jobs, log, progress, run, icon=None):
     import tarfile
     sys.path.insert(0, os.path.join(HERE, 'tools', 'xbox'))
     import xbox
@@ -613,7 +613,7 @@ def xbox_steps(rom, jobs, log, progress, run):
     # Without the ROM: the player copies it to the console (see XBOX_HELP).
     msix = xbox.package(os.path.join(build, 'ssrecomp.exe'), sdl_dll,
                         os.path.join(HERE, 'tools', 'appimage', 'ssrecomp-setup.png'), version(),
-                        XBOX_OUT, XBOX_DIR, env, run, log)
+                        XBOX_OUT, XBOX_DIR, env, run, log, picture=icon or xbox.custom_icon(XBOX_DIR))
     write_rom_note(rom)
     log('Made ' + msix)
     progress(1.0, 'Done: ' + msix)
@@ -1119,7 +1119,9 @@ def main():
                 if f is not None:
                     last[0] = f
                 print(f'[{int(last[0] * 100):3d}%] {label}', file=out, flush=True)
-            run_steps(rom, jobs, lambda t: print(t, file=out, flush=True), progress, android=android, xbox=xbox)
+            icon = args[args.index('--xbox-icon') + 1] if '--xbox-icon' in args else None
+            run_steps(rom, jobs, lambda t: print(t, file=out, flush=True), progress, android=android, xbox=xbox,
+                      icon=icon)
         except RuntimeError as e:
             sys.exit(str(e))
         if android:
