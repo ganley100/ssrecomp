@@ -592,6 +592,7 @@ def xbox_steps(rom, jobs, log, progress, run, icon=None):
         progress(0.1, 'Compiling SDL2 for UWP')
         sdl_build = os.path.join(XBOX_DIR, 'build-sdl2-uwp')
         run(['cmake', '-S', os.path.join(XBOX_DIR, SDL2_NAME), '-B', sdl_build, '-G', vs['generator'], '-A', 'x64',
+             '-DCMAKE_GENERATOR_INSTANCE=' + vs['root'].replace('\\', '/'),
              '-DCMAKE_SYSTEM_NAME=WindowsStore', '-DCMAKE_SYSTEM_VERSION=10.0', '-DSDL_TEST=OFF', '-DSDL_STATIC=OFF'],
             env=env)
         run(['cmake', '--build', sdl_build, '--config', 'Release', '--parallel', str(jobs)], env=env)

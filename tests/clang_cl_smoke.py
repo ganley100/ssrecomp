@@ -85,6 +85,7 @@ def uwp(build, gen, vs):
     sdl_prefix = build / 'sdl2-uwp'
     sdl_build = build / 'build-sdl2-uwp'
     run(['cmake', '-S', build / f'SDL2-{SDL2_VERSION}', '-B', sdl_build, '-G', vs['generator'], '-A', 'x64',
+         '-DCMAKE_GENERATOR_INSTANCE=' + vs['root'].replace('\\', '/'),
          '-DCMAKE_SYSTEM_NAME=WindowsStore', '-DCMAKE_SYSTEM_VERSION=10.0', '-DSDL_TEST=OFF', '-DSDL_STATIC=OFF'], env=env)
     run(['cmake', '--build', sdl_build, '--config', 'Release', '--parallel', '2'], env=env)
     run(['cmake', '--install', sdl_build, '--config', 'Release', '--prefix', sdl_prefix], env=env)

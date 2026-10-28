@@ -36,6 +36,9 @@ VS_HELP = ('Install Visual Studio 2022 (the free Community edition is enough) an
            'Windows Platform tools".')
 
 
+VS_YEARS = {'16': '2019', '17': '2022', '18': '2026'}
+
+
 def find_visual_studio(uwp=True):
     """The newest Visual Studio with clang-cl (and the UWP C++ libraries), as a dict;
     raises RuntimeError saying what to install."""
@@ -59,7 +62,9 @@ def find_visual_studio(uwp=True):
             problems.append(root + ': no "C++ Universal Windows Platform tools"')
             continue
         major = vs.get('installationVersion', '0').split('.')[0]
-        year = vs.get('catalog', {}).get('productLineVersion', '')
+        # CMake's generator names pair the major version with the release year; the
+        # installer's own "product line version" is not always that year (2026 says 18).
+        year = VS_YEARS.get(major) or vs.get('catalog', {}).get('productLineVersion', '')
         return {
             'root': root,
             'vcvarsall': os.path.join(vc, 'Auxiliary', 'Build', 'vcvarsall.bat'),
