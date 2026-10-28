@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Xbox (experimental):** the setup program can build the game as an app for an
+  Xbox One or Series console in Developer Mode (**Build for Xbox**, or `--xbox`,
+  on Windows with Visual Studio). It is compiled with clang-cl and packed into a
+  signed MSIX; see "Xbox" in the README for installing it.
+- The game can be built with clang-cl on Windows, as well as with MSYS2's GCC.
 - The setup program for macOS can now check for updates and update itself from
   the setup window and with `--update`, matching Linux and Windows.
 - A single-screen build of the decompilation (the one-screen game) is recognised when it

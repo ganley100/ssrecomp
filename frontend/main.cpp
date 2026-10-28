@@ -35,6 +35,17 @@
 #include <atomic>
 #include <jni.h>
 #endif
+#ifdef SSR_UWP
+#include <windows.h>
+#include <roapi.h>
+// SDL declares these only for a WINAPI_FAMILY_APP build (__WINRT__), which the C++
+// library no longer compiles in; they are in the SDL2.dll built for UWP.
+extern "C" {
+DECLSPEC int SDLCALL SDL_WinRTRunApp(SDL_main_func mainFunction, void* reserved);
+enum { SSR_WINRT_PATH_INSTALLED_LOCATION = 0, SSR_WINRT_PATH_LOCAL_FOLDER = 1 }; // SDL_WinRT_Path
+DECLSPEC const char* SDLCALL SDL_WinRTGetFSPathUTF8(int pathType);
+}
+#endif
 
 #include "NDS.h"
 #include "NDSCart.h"
@@ -1059,6 +1070,29 @@ int main(int argc, char** argv)
         argv = androidArgv.data();
     }
 #endif
+#ifdef SSR_UWP
+    // Started from the Xbox's (or Windows') app list: the ROM is packed in the app
+    // (tools/xbox/xbox.py), the save, the settings and the messages go in the app's
+    // own folder (LocalState), which the Xbox Device Portal's file explorer can open.
+    std::vector<std::string> uwpArgs;
+    std::vector<char*> uwpArgv;
+    if (argc < 2)
+    {
+        const char* installed = SDL_WinRTGetFSPathUTF8(SSR_WINRT_PATH_INSTALLED_LOCATION);
+        const char* local = SDL_WinRTGetFSPathUTF8(SSR_WINRT_PATH_LOCAL_FOLDER);
+        const std::string dir = local ? local : ".";
+        // Files the emulator core keeps by relative name go there too.
+        std::error_code ec;
+        std::filesystem::current_path(std::filesystem::u8path(dir), ec);
+        if (freopen((dir + "\\game.log").c_str(), "w", stderr))
+            setvbuf(stderr, nullptr, _IONBF, 0); // Windows has no line buffering
+        uwpArgs = { "ssrecomp", std::string(installed ? installed : ".") + "\\rom.nds",
+                    "--save", dir + "\\soulsilver.sav", "--fullscreen" };
+        for (auto& a : uwpArgs) uwpArgv.push_back(a.data());
+        argc = (int)uwpArgv.size();
+        argv = uwpArgv.data();
+    }
+#endif
     if (!ParseArgs(argc, argv, opt))
     {
         Usage();
@@ -1180,6 +1214,12 @@ int main(int argc, char** argv)
         // HIDAPI drivers on, a pad one of them claims (a Backbone One, a PlayStation pad) is
         // left out of Android's list, and is lost if SDL cannot open it over USB itself.
         SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI, "0");
+#endif
+#ifdef SSR_UWP
+        // On the Xbox the controller's B is also the system's "back", which would send the
+        // game to the background; SDL keeps it in the game when this is set (see the
+        // SDLK_AC_BACK it then reports, below).
+        SDL_SetHint(SDL_HINT_WINRT_HANDLE_BACK_BUTTON, "1");
 #endif
         // The controller keeps working while another window has the focus (on Windows SDL
         // otherwise ignores it then, as when the game was started from the setup window).
@@ -2415,6 +2455,11 @@ int main(int argc, char** argv)
             touchPad.NextFrame();
             while (SDL_PollEvent(&ev))
             {
+#ifdef SSR_UWP
+                // That "back" is the B button, which also arrives from the controller as
+                // itself: as a key it must not open the menu as well.
+                if ((ev.type == SDL_KEYDOWN || ev.type == SDL_KEYUP) && ev.key.keysym.sym == SDLK_AC_BACK) continue;
+#endif
                 if (ev.type == SDL_QUIT) running = false;
                 else if (ev.type == SDL_APP_WILLENTERBACKGROUND || ev.type == SDL_APP_TERMINATING)
                 {
@@ -3582,3 +3627,14 @@ int main(int argc, char** argv)
     }
     return 0;
 }
+
+#ifdef SSR_UWP
+// A UWP program starts in CoreApplication, and SDL runs main (renamed SDL_main by
+// SDL_main.h) inside it. SDL's own entry point for this, SDL_winrt_main_NonXAML.cpp, is
+// C++/CX, which clang-cl cannot compile; this does the same.
+int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
+{
+    if (FAILED(RoInitialize(RO_INIT_MULTITHREADED))) return 1;
+    return SDL_WinRTRunApp(SDL_main, nullptr);
+}
+#endif
