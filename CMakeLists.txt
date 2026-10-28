@@ -34,6 +34,9 @@ endif()
 # program (tools/xbox/xbox.py). Built with clang-cl against an SDL2 made for UWP; the
 # Xbox only starts UWP programs, not ordinary Windows ones.
 option(SSR_UWP "Build the UWP app for Xbox (clang-cl; packed by the setup program)" OFF)
+# The Xbox launcher (tools/xbox/launcher.py): built without the game's code, it runs the
+# game on melonDS's interpreter, so it needs no ROM to build and holds nothing of the game.
+option(SSR_LAUNCHER "Run the game on the interpreter by default (for a build without the game's code)" OFF)
 if(SSR_UWP AND NOT MSVC)
     message(FATAL_ERROR "SSR_UWP needs clang-cl (an MSVC-style compiler)")
 endif()
@@ -146,7 +149,7 @@ else()
         # The app's own entry point and paths in main.cpp. Not WINAPI_FAMILY_APP: the C++
         # library no longer compiles with it; linking WindowsApp.lib alone is what keeps the
         # program to the system functions a UWP program may use.
-        target_compile_definitions(ssrecomp PRIVATE SSR_UWP)
+        target_compile_definitions(ssrecomp PRIVATE SSR_UWP $<$<BOOL:${SSR_LAUNCHER}>:SSR_LAUNCHER>)
         set_target_properties(ssrecomp PROPERTIES WIN32_EXECUTABLE ON)
         target_link_options(ssrecomp PRIVATE /APPCONTAINER)
     endif()

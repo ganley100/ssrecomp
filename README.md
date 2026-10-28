@@ -146,6 +146,14 @@ signed MSIX:
    `io.github.clickingmaster.ssrecomp_…` → **LocalState**, upload your ROM
    there (any name ending in `.nds`) and start the app again.
 
+**Without a Windows PC (the launcher):** GitHub builds a version of the Xbox app
+without any of the game in it (Actions tab → **Xbox launcher** → the newest run →
+the `SoulSilver-ssrecomp-xbox-launcher` download). It needs no ROM to build, so it
+can be downloaded on a phone and installed through the Device Portal as in steps
+3–5; your ROM still goes in the app's `LocalState` folder. It runs the game on
+melonDS's ordinary emulator instead of the recompiled code, so it is slower, and
+the single-screen view cannot tell the game's screens apart (it keeps one layout).
+
 **Your own icon:** put a picture (PNG or JPEG, square works best) named
 `icon.png` or `icon.jpg` in the `xbox` folder of the setup program's folder, or
 pass `--xbox-icon <picture>`, and build again; the app's tiles are made from it.

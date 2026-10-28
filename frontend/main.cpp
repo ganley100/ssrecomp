@@ -1111,6 +1111,11 @@ int main(int argc, char** argv)
         }
         fprintf(stderr, "ROM: %s\n", rom.c_str());
         uwpArgs = { "ssrecomp", rom, "--save", dir + "\\soulsilver.sav", "--fullscreen" };
+#ifdef SSR_LAUNCHER
+        // Built without the game's code (tools/xbox/launcher.py): all of it runs on the
+        // interpreter.
+        uwpArgs.push_back("--interp");
+#endif
         for (auto& a : uwpArgs) uwpArgv.push_back(a.data());
         argc = (int)uwpArgv.size();
         argv = uwpArgv.data();

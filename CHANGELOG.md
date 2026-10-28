@@ -8,6 +8,9 @@
   signed MSIX without the ROM, which you copy to the console yourself; see "Xbox"
   in the README for installing it. Its tiles can be made from a picture of your
   own (`xbox/icon.png` or `.jpg`, or `--xbox-icon`).
+- **Xbox launcher:** a version of the Xbox app without the game in it, built by
+  GitHub, for players without a Windows PC; it plays your ROM on the ordinary
+  emulator (slower, and with one fixed screen layout).
 - The game can be built with clang-cl on Windows, as well as with MSYS2's GCC.
 - The setup program for macOS can now check for updates and update itself from
   the setup window and with `--update`, matching Linux and Windows.

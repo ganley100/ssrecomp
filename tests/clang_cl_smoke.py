@@ -77,7 +77,9 @@ def desktop(build, gen, vs):
     print('clang-cl desktop build passed.', flush=True)
 
 
-def uwp(build, gen, vs):
+def uwp(build, gen, vs, *cmake_args, picture=None):
+    """SDL2 for UWP, the app from gen and its signed MSIX in build/package; returns the
+    MSIX. Also used by tools/xbox/launcher.py."""
     env = xbox.uwp_env(vs)
     tar_path = fetch(SDL2_SOURCE[0], build / 'downloads' / f'SDL2-{SDL2_VERSION}.tar.gz', SDL2_SOURCE[1])
     with tarfile.open(tar_path) as t:
@@ -89,14 +91,14 @@ def uwp(build, gen, vs):
          '-DCMAKE_SYSTEM_NAME=WindowsStore', '-DCMAKE_SYSTEM_VERSION=10.0', '-DSDL_TEST=OFF', '-DSDL_STATIC=OFF'], env=env)
     run(['cmake', '--build', sdl_build, '--config', 'Release', '--parallel', '2'], env=env)
     run(['cmake', '--install', sdl_build, '--config', 'Release', '--prefix', sdl_prefix], env=env)
-    configure(build / 'uwp', gen, vs, env, '-DSSR_UWP=ON', '-DCMAKE_PREFIX_PATH=' + str(sdl_prefix).replace('\\', '/'))
+    configure(build / 'uwp', gen, vs, env, '-DSSR_UWP=ON', '-DCMAKE_PREFIX_PATH=' + str(sdl_prefix).replace('\\', '/'),
+              *cmake_args)
     msix = xbox.package(str(build / 'uwp' / 'ssrecomp.exe'), str(sdl_prefix / 'bin' / 'SDL2.dll'),
                         str(ROOT / 'tools' / 'appimage' / 'ssrecomp-setup.png'), '0.0.0', str(build / 'package'),
                         str(build / 'keys'), env, lambda cmd, env=None: run(cmd, env), print,
-                        # The player's own picture is scaled by Windows: try that path with ours.
-                        picture=str(ROOT / 'tools' / 'appimage' / 'ssrecomp-setup.png'))
+                        picture=picture)
     assert os.path.getsize(msix) > 0
-    print('clang-cl Xbox (UWP) build and MSIX passed: ' + msix, flush=True)
+    return msix
 
 
 def main():
@@ -113,7 +115,9 @@ def main():
     if args.desktop or not args.xbox:
         desktop(build, gen, vs)
     if args.xbox:
-        uwp(build, gen, vs)
+        # The player's own picture is scaled by Windows: try that path with ours.
+        msix = uwp(build, gen, vs, picture=str(ROOT / 'tools' / 'appimage' / 'ssrecomp-setup.png'))
+        print('clang-cl Xbox (UWP) build and MSIX passed: ' + msix, flush=True)
 
 
 if __name__ == '__main__':

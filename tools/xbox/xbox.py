@@ -312,8 +312,13 @@ def manifest(version):
 
 
 def next_version(release, key_dir):
-    """release ("0.4.2") plus a build number kept in key_dir: a package installs over an
-    older one only with a higher version."""
+    """release ("0.4.2") plus a build number kept in key_dir (or SSR_BUILD_NUMBER, as the
+    launcher workflow sets it): a package installs over an older one only with a higher
+    version."""
+    if os.environ.get('SSR_BUILD_NUMBER', '').isdigit():
+        n = int(os.environ['SSR_BUILD_NUMBER'])
+        parts = (release.split('.') + ['0', '0', '0'])[:3]
+        return '.'.join(parts + [str(n % 65536)])
     counter = os.path.join(key_dir, 'build-number.txt')
     try:
         with open(counter) as f:
