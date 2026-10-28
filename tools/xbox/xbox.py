@@ -232,6 +232,15 @@ def write_assets(icon_path, folder):
         write_png(os.path.join(folder, name), w, h, tile(icon, w, h, size))
 
 
+def powershell(script):
+    """Runs script in Windows PowerShell. Without PowerShell 7's module path: started from
+    PowerShell 7, Windows PowerShell inherits it and cannot load its own modules (then the
+    Cert: drive, among others, is missing)."""
+    env = {k: v for k, v in os.environ.items() if k.upper() != 'PSMODULEPATH'}
+    return subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-Command', script],
+                          capture_output=True, text=True, errors='replace', env=env)
+
+
 def write_assets_from_picture(picture, folder):
     """The tiles from the player's own picture (PNG, JPEG, BMP...: anything Windows reads),
     each as large as it fits, keeping its shape. Scaled by Windows (System.Drawing), which
@@ -252,8 +261,7 @@ def write_assets_from_picture(picture, folder):
         '  $g.DrawImage($src, [int](($w - $dw) / 2), [int](($h - $dh) / 2), $dw, $dh);'
         '  $bmp.Save($f[0], [System.Drawing.Imaging.ImageFormat]::Png); $g.Dispose(); $bmp.Dispose() };'
         '$src.Dispose()')
-    out = subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-Command', script],
-                         capture_output=True, text=True, errors='replace')
+    out = powershell(script)
     if out.returncode != 0:
         raise RuntimeError('Could not make the tiles from ' + picture + ':\n' + (out.stderr or out.stdout)[-2000:])
 
@@ -336,8 +344,7 @@ def signing_key(key_dir, log):
         f'Export-PfxCertificate -Cert $c -FilePath "{pfx}" -Password $p | Out-Null;'
         f'Export-Certificate -Cert $c -FilePath "{cer}" | Out-Null;'
         'Remove-Item -Path ("Cert:\\CurrentUser\\My\\" + $c.Thumbprint)')
-    out = subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-Command', script],
-                         capture_output=True, text=True, errors='replace')
+    out = powershell(script)
     if out.returncode != 0 or not os.path.exists(pfx):
         raise RuntimeError('Could not make the signing certificate:\n' + (out.stderr or out.stdout)[-2000:])
     with open(pw_file, 'w') as f:
