@@ -11,7 +11,8 @@
   own (`xbox/icon.png` or `.jpg`, or `--xbox-icon`).
 - **Xbox launcher:** a version of the Xbox app without the game in it, built by
   GitHub, for players without a Windows PC; it plays your ROM on the ordinary
-  emulator (slower, and with one fixed screen layout).
+  emulator (slower). The single-screen and widescreen views still switch with the
+  game's screens: it watches the game's code, read from your ROM on the console.
 - The game can be built with clang-cl on Windows, as well as with MSYS2's GCC.
 - The setup program for macOS can now check for updates and update itself from
   the setup window and with `--update`, matching Linux and Windows.

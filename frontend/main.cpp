@@ -1184,6 +1184,13 @@ int main(int argc, char** argv)
     auto nds = MakeConsole(rom, sav, opt.headless);
     if (!nds) return 1;
     nds->ARM9.RecompEnable = opt.recomp;
+    // On the interpreter with a table to watch (the Xbox launcher has no recompiled code):
+    // every jump tells the scene detection what the game is doing, from the ROM's own code.
+    if (!opt.recomp && !opt.lockstep && rc_watch_enable(rom.data(), rom.size()))
+    {
+        nds->ARM9.RecompWatch = true;
+        fprintf(stderr, "watching the game's code on the interpreter\n");
+    }
 
     // Lockstep: a second console on the plain interpreter runs each frame first and
     // records the CPU state after every instruction; the recompiled console must match.

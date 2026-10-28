@@ -152,8 +152,10 @@ without any of the game in it (Actions tab → **Xbox launcher** → the newest 
 the `SoulSilver-ssrecomp-xbox-launcher` download). It needs no ROM to build, so it
 can be downloaded on a phone and installed through the Device Portal as in steps
 3–5; your ROM goes in DevelopmentFiles as there. It runs the game on
-melonDS's ordinary emulator instead of the recompiled code, so it is slower, and
-the single-screen view cannot tell the game's screens apart (it keeps one layout).
+melonDS's ordinary emulator instead of the recompiled code, so it is slower. The
+single-screen and widescreen views still follow the game (battle, bag, menus,
+the map): the app reads the game's code from your ROM when it starts and watches
+which parts of it run.
 
 **Your own icon:** put a picture (PNG or JPEG, square works best) named
 `icon.png` or `icon.jpg` in the `xbox` folder of the setup program's folder, or

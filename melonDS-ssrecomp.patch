@@ -1,11 +1,14 @@
 diff --git a/src/ARM.cpp b/src/ARM.cpp
-index 827fcb01..2b2f80a8 100644
+index 827fcb01..6cc67b74 100644
 --- a/src/ARM.cpp
 +++ b/src/ARM.cpp
-@@ -359,6 +359,39 @@ void ARMv5::JumpTo(u32 addr, bool restorecpsr)
-     NDS.MonitorARM9Jump(addr);
- }
+@@ -357,6 +357,40 @@ void ARMv5::JumpTo(u32 addr, bool restorecpsr)
+     }
  
+     NDS.MonitorARM9Jump(addr);
++    if (RecompWatch) RecompWatchJump(this, addr);
++}
++
 +// ssrecomp: the ARM7 runs from main RAM or WRAM almost all the time; those are
 +// read and written here as NDS::ARM7Read/Write do it (with no JIT, nothing else happens
 +// on a write), the rest goes through the bus as before.
@@ -37,12 +40,10 @@ index 827fcb01..2b2f80a8 100644
 +{
 +    if (u8* p = ARM7DirectRAM(NDS, addr & ~3u)) return *(u32*)p;
 +    return BusRead32(addr);
-+}
-+
+ }
+ 
  void ARMv4::JumpTo(u32 addr, bool restorecpsr)
- {
-     if (restorecpsr)
-@@ -657,7 +690,11 @@ void ARMv5::Execute()
+@@ -657,7 +691,11 @@ void ARMv5::Execute()
          else
  #endif
          {
@@ -55,7 +56,7 @@ index 827fcb01..2b2f80a8 100644
              {
                  if constexpr (mode == CPUExecuteMode::InterpreterGDB)
                      GdbCheckC();
-@@ -698,6 +735,8 @@ void ARMv5::Execute()
+@@ -698,6 +736,8 @@ void ARMv5::Execute()
                      AddCycles_C();
              }
  
@@ -64,7 +65,7 @@ index 827fcb01..2b2f80a8 100644
              // TODO optimize this shit!!!
              if (Halted)
              {
-@@ -729,6 +768,9 @@ template void ARMv5::Execute<CPUExecuteMode::InterpreterGDB>();
+@@ -729,6 +769,9 @@ template void ARMv5::Execute<CPUExecuteMode::InterpreterGDB>();
  template void ARMv5::Execute<CPUExecuteMode::JIT>();
  #endif
  
@@ -74,7 +75,7 @@ index 827fcb01..2b2f80a8 100644
  template <CPUExecuteMode mode>
  void ARMv4::Execute()
  {
-@@ -796,6 +838,7 @@ void ARMv4::Execute()
+@@ -796,6 +839,7 @@ void ARMv4::Execute()
          else
  #endif
          {
@@ -82,7 +83,7 @@ index 827fcb01..2b2f80a8 100644
              if (CPSR & 0x20) // THUMB
              {
                  if constexpr (mode == CPUExecuteMode::InterpreterGDB)
-@@ -1121,7 +1164,8 @@ u32 ARMv5::ReadMem(u32 addr, int size)
+@@ -1121,7 +1165,8 @@ u32 ARMv5::ReadMem(u32 addr, int size)
  
  void ARMv4::DataRead8(u32 addr, u32* val)
  {
@@ -92,7 +93,7 @@ index 827fcb01..2b2f80a8 100644
      DataRegion = addr;
      DataCycles = NDS.ARM7MemTimings[addr >> 15][0];
  }
-@@ -1130,7 +1174,8 @@ void ARMv4::DataRead16(u32 addr, u32* val)
+@@ -1130,7 +1175,8 @@ void ARMv4::DataRead16(u32 addr, u32* val)
  {
      addr &= ~1;
  
@@ -102,7 +103,7 @@ index 827fcb01..2b2f80a8 100644
      DataRegion = addr;
      DataCycles = NDS.ARM7MemTimings[addr >> 15][0];
  }
-@@ -1139,7 +1184,8 @@ void ARMv4::DataRead32(u32 addr, u32* val)
+@@ -1139,7 +1185,8 @@ void ARMv4::DataRead32(u32 addr, u32* val)
  {
      addr &= ~3;
  
@@ -112,7 +113,7 @@ index 827fcb01..2b2f80a8 100644
      DataRegion = addr;
      DataCycles = NDS.ARM7MemTimings[addr >> 15][2];
  }
-@@ -1148,13 +1194,15 @@ void ARMv4::DataRead32S(u32 addr, u32* val)
+@@ -1148,13 +1195,15 @@ void ARMv4::DataRead32S(u32 addr, u32* val)
  {
      addr &= ~3;
  
@@ -130,7 +131,7 @@ index 827fcb01..2b2f80a8 100644
      DataRegion = addr;
      DataCycles = NDS.ARM7MemTimings[addr >> 15][0];
  }
-@@ -1163,7 +1211,8 @@ void ARMv4::DataWrite16(u32 addr, u16 val)
+@@ -1163,7 +1212,8 @@ void ARMv4::DataWrite16(u32 addr, u16 val)
  {
      addr &= ~1;
  
@@ -140,7 +141,7 @@ index 827fcb01..2b2f80a8 100644
      DataRegion = addr;
      DataCycles = NDS.ARM7MemTimings[addr >> 15][0];
  }
-@@ -1172,7 +1221,8 @@ void ARMv4::DataWrite32(u32 addr, u32 val)
+@@ -1172,7 +1222,8 @@ void ARMv4::DataWrite32(u32 addr, u32 val)
  {
      addr &= ~3;
  
@@ -150,7 +151,7 @@ index 827fcb01..2b2f80a8 100644
      DataRegion = addr;
      DataCycles = NDS.ARM7MemTimings[addr >> 15][2];
  }
-@@ -1181,7 +1231,8 @@ void ARMv4::DataWrite32S(u32 addr, u32 val)
+@@ -1181,7 +1232,8 @@ void ARMv4::DataWrite32S(u32 addr, u32 val)
  {
      addr &= ~3;
  
@@ -160,7 +161,7 @@ index 827fcb01..2b2f80a8 100644
      DataCycles += NDS.ARM7MemTimings[addr >> 15][3];
  }
  
-@@ -1293,6 +1344,7 @@ u32 ARMv4::BusRead32(u32 addr)
+@@ -1293,6 +1345,7 @@ u32 ARMv4::BusRead32(u32 addr)
      return NDS.ARM7Read32(addr);
  }
  
@@ -169,26 +170,31 @@ index 827fcb01..2b2f80a8 100644
  {
      NDS.ARM7Write8(addr, val);
 diff --git a/src/ARM.h b/src/ARM.h
-index 96ed66f0..a193e70c 100644
+index 96ed66f0..88915983 100644
 --- a/src/ARM.h
 +++ b/src/ARM.h
-@@ -229,6 +229,10 @@ protected:
+@@ -229,6 +229,12 @@ protected:
      void GdbCheckC();
  };
  
 +class ARMv5;
 +// ssrecomp: provided by the recompiler runtime. Runs recompiled code at the current PC if there is any.
 +bool RecompRun(ARMv5* cpu);
++// ssrecomp: provided by the recompiler runtime. Records a jump for the frontend (see RecompWatch).
++void RecompWatchJump(ARMv5* cpu, u32 addr);
 +
  class ARMv5 : public ARM
  {
  public:
-@@ -251,6 +255,12 @@ public:
+@@ -251,6 +257,15 @@ public:
      template <CPUExecuteMode mode>
      void Execute();
  
 +    // ssrecomp: when set, the interpreter loop first tries statically recompiled code.
 +    bool RecompEnable = false;
++    // ssrecomp: when set, every jump is reported to RecompWatchJump, which tells the frontend
++    // what the game is doing when it runs on the interpreter (it changes nothing here).
++    bool RecompWatch = false;
 +    // ssrecomp: called after every ARM9 instruction (or recompiled chunk), before IRQ handling.
 +    void (*TraceHook)(ARMv5* cpu, void* user) = nullptr;
 +    void* TraceUser = nullptr;
@@ -196,7 +202,7 @@ index 96ed66f0..a193e70c 100644
      // all code accesses are forced nonseq 32bit
      u32 CodeRead32(u32 addr, bool branch);
  
-@@ -392,15 +402,9 @@ public:
+@@ -392,15 +407,9 @@ public:
      template <CPUExecuteMode mode>
      void Execute();
  
