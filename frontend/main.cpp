@@ -20,7 +20,8 @@
 #include <tuple>
 #include <deque>
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(_MSC_VER)
+// (SDL's package for Visual Studio has SDL.h directly in its include folder.)
 #include <SDL.h>
 #else
 #include <SDL2/SDL.h>
