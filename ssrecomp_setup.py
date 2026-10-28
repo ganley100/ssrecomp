@@ -610,7 +610,8 @@ def xbox_steps(rom, jobs, log, progress, run):
     run(['ninja', '-C', build, '-j', str(jobs)], parse_ninja=True, env=env)
 
     progress(0.98, 'Packing the MSIX')
-    msix = xbox.package(os.path.join(build, 'ssrecomp.exe'), sdl_dll, rom,
+    # Without the ROM: the player copies it to the console (see XBOX_HELP).
+    msix = xbox.package(os.path.join(build, 'ssrecomp.exe'), sdl_dll,
                         os.path.join(HERE, 'tools', 'appimage', 'ssrecomp-setup.png'), version(),
                         XBOX_OUT, XBOX_DIR, env, run, log)
     write_rom_note(rom)
@@ -619,16 +620,20 @@ def xbox_steps(rom, jobs, log, progress, run):
 
 
 XBOX_HELP = (
-    'Made the Xbox app in ' + XBOX_OUT + ' (SoulSilver-ssrecomp.msix). It holds your copy of '
-    'the game: do not share it.\n\n'
+    'Made the Xbox app in ' + XBOX_OUT + ' (SoulSilver-ssrecomp.msix). The ROM is not in '
+    'it, but its code is made from your game: do not share it.\n\n'
     'To install it on an Xbox One or Series console in Developer Mode: open the Device Portal '
     '(its address is shown in Dev Home), choose Add, pick SoulSilver-ssrecomp.msix and, when '
     'asked for dependencies, Microsoft.VCLibs.x64.14.00.appx from the same folder. Then, in '
     'Dev Home, select the app, press the View button, choose View details and set its type to Game '
-    '(apps get only a part of the processor and memory). Saves stay on the console '
-    '(LocalState in the Device Portal\'s file explorer).\n\n'
+    '(apps get only a part of the processor and memory).\n\n'
+    'Start the app once (it makes its folder and says where the ROM goes), then copy your ROM '
+    'to the console: in the Device Portal open File explorer -> '
+    'LocalAppData -> io.github.clickingmaster.ssrecomp_... -> LocalState and upload it there '
+    '(any name ending in .nds). The save, the settings and game.log are kept in that folder too.\n\n'
     'To install it on this PC instead: double-click SoulSilver-ssrecomp.cer and install it '
-    'for the Local Machine into "Trusted People", then open the .msix.')
+    'for the Local Machine into "Trusted People", then open the .msix; start it once and put the '
+    'ROM in %LOCALAPPDATA%\\Packages\\io.github.clickingmaster.ssrecomp_...\\LocalState.')
 
 
 ANDROID_HELP = (

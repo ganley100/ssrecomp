@@ -9,8 +9,9 @@ Modify):
 SDL2 is compiled for UWP with Visual Studio's own compiler (its UWP code is C++/CX, which
 only that compiler understands); the game itself with clang-cl.
 
-Used by ssrecomp_setup.py (Build for Xbox, or --xbox); the package holds the player's own
-ROM, so it must not be shared.
+Used by ssrecomp_setup.py (Build for Xbox, or --xbox). The package does not hold the ROM
+(the player copies it to the console, see main.cpp), but its code is recompiled from it,
+so it must not be shared either.
 """
 import glob
 import json
@@ -312,8 +313,9 @@ def vclibs_package():
     return found[0] if found else None
 
 
-def package(exe, sdl_dll, rom, icon, release, out_dir, key_dir, env, run, log):
-    """Packs exe, SDL2.dll and the ROM into a signed MSIX in out_dir; returns its path."""
+def package(exe, sdl_dll, icon, release, out_dir, key_dir, env, run, log, rom=None):
+    """Packs exe and SDL2.dll (and rom, if given) into a signed MSIX in out_dir; returns
+    its path."""
     check_imports(exe)
     os.makedirs(key_dir, exist_ok=True)
     os.makedirs(out_dir, exist_ok=True)
@@ -322,7 +324,8 @@ def package(exe, sdl_dll, rom, icon, release, out_dir, key_dir, env, run, log):
     os.makedirs(layout)
     shutil.copy2(exe, os.path.join(layout, 'ssrecomp.exe'))
     shutil.copy2(sdl_dll, os.path.join(layout, 'SDL2.dll'))
-    shutil.copyfile(rom, os.path.join(layout, 'rom.nds'))
+    if rom:
+        shutil.copyfile(rom, os.path.join(layout, 'rom.nds'))
     write_assets(icon, os.path.join(layout, 'Assets'))
     version = next_version(release or '0.0.0', key_dir)
     with open(os.path.join(layout, 'AppxManifest.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
@@ -337,6 +340,6 @@ def package(exe, sdl_dll, rom, icon, release, out_dir, key_dir, env, run, log):
     vclibs = vclibs_package()
     if vclibs:
         shutil.copy2(vclibs, os.path.join(out_dir, os.path.basename(vclibs)))
-    # The unpacked copy is the player's ROM; only the package is kept.
+    # The unpacked copy may hold the player's ROM; only the package is kept.
     shutil.rmtree(layout, ignore_errors=True)
     return msix

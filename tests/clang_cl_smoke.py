@@ -4,8 +4,8 @@ Xbox (UWP) app packed and signed into an MSIX.
 
 Usage: python tests/clang_cl_smoke.py --build-dir <dir> [--desktop] [--xbox]
 Needs Visual Studio with clang-cl (and the UWP C++ tools for --xbox). The game code is
-the synthetic fixture of native_smoke.py and the "ROM" in the package is zero bytes:
-never put game content in here.
+the synthetic fixture of native_smoke.py and the package has no ROM: never put game
+content in here.
 """
 import argparse
 import hashlib
@@ -89,9 +89,7 @@ def uwp(build, gen, vs):
     run(['cmake', '--build', sdl_build, '--config', 'Release', '--parallel', '2'], env=env)
     run(['cmake', '--install', sdl_build, '--config', 'Release', '--prefix', sdl_prefix], env=env)
     configure(build / 'uwp', gen, vs, env, '-DSSR_UWP=ON', '-DCMAKE_PREFIX_PATH=' + str(sdl_prefix).replace('\\', '/'))
-    rom = build / 'empty.nds'
-    rom.write_bytes(b'')
-    msix = xbox.package(str(build / 'uwp' / 'ssrecomp.exe'), str(sdl_prefix / 'bin' / 'SDL2.dll'), str(rom),
+    msix = xbox.package(str(build / 'uwp' / 'ssrecomp.exe'), str(sdl_prefix / 'bin' / 'SDL2.dll'),
                         str(ROOT / 'tools' / 'appimage' / 'ssrecomp-setup.png'), '0.0.0', str(build / 'package'),
                         str(build / 'keys'), env, lambda cmd, env=None: run(cmd, env), print)
     assert os.path.getsize(msix) > 0

@@ -1071,9 +1071,10 @@ int main(int argc, char** argv)
     }
 #endif
 #ifdef SSR_UWP
-    // Started from the Xbox's (or Windows') app list: the ROM is packed in the app
-    // (tools/xbox/xbox.py), the save, the settings and the messages go in the app's
-    // own folder (LocalState), which the Xbox Device Portal's file explorer can open.
+    // Started from the Xbox's (or Windows') app list. The player puts the ROM in the app's
+    // own folder (LocalState, which the Xbox Device Portal's file explorer can open; the
+    // package from tools/xbox/xbox.py does not hold it); the save, the settings and the
+    // messages go there too.
     std::vector<std::string> uwpArgs;
     std::vector<char*> uwpArgv;
     if (argc < 2)
@@ -1086,8 +1087,29 @@ int main(int argc, char** argv)
         std::filesystem::current_path(std::filesystem::u8path(dir), ec);
         if (freopen((dir + "\\game.log").c_str(), "w", stderr))
             setvbuf(stderr, nullptr, _IONBF, 0); // Windows has no line buffering
-        uwpArgs = { "ssrecomp", std::string(installed ? installed : ".") + "\\rom.nds",
-                    "--save", dir + "\\soulsilver.sav", "--fullscreen" };
+        // rom.nds in the package (if it was packed with one) or in that folder, else the
+        // first .nds file there, whatever it is called.
+        std::string rom;
+        for (const std::string& p : { std::string(installed ? installed : ".") + "\\rom.nds", dir + "\\rom.nds" })
+            if (rom.empty() && std::filesystem::exists(std::filesystem::u8path(p), ec)) rom = p;
+        if (rom.empty())
+            for (const auto& e : std::filesystem::directory_iterator(std::filesystem::u8path(dir), ec))
+            {
+                std::string ext = e.path().extension().u8string();
+                for (char& c : ext) c = (char)tolower((unsigned char)c);
+                if (ext == ".nds" && e.is_regular_file(ec)) { rom = e.path().u8string(); break; }
+            }
+        if (rom.empty())
+        {
+            const std::string say = "Put your Pokemon SoulSilver (US) ROM, a file ending in .nds, in this app's "
+                "folder and start it again:\n\n" + dir + "\n\nOn an Xbox: Device Portal -> File explorer -> "
+                "LocalAppData -> io.github.clickingmaster.ssrecomp_... -> LocalState.";
+            fprintf(stderr, "%s\n", say.c_str());
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "SoulSilver: no ROM yet", say.c_str(), nullptr);
+            return 1;
+        }
+        fprintf(stderr, "ROM: %s\n", rom.c_str());
+        uwpArgs = { "ssrecomp", rom, "--save", dir + "\\soulsilver.sav", "--fullscreen" };
         for (auto& a : uwpArgs) uwpArgv.push_back(a.data());
         argc = (int)uwpArgv.size();
         argv = uwpArgv.data();

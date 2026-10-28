@@ -131,7 +131,8 @@ signed MSIX:
 2. In the setup program, choose your ROM and press **Build for Xbox** (or
    `--rom your-rom.nds --xbox` without the window). The first time it downloads
    SDL2 and compiles it for UWP; the build takes about as long as the PC one.
-   The result is in the folder `xbox-package` of the setup program's folder:
+   It needs your ROM to make the game's code, but does not put the ROM in the
+   app. The result is in the folder `xbox-package` of the setup program's folder:
    `SoulSilver-ssrecomp.msix`, its certificate `SoulSilver-ssrecomp.cer` and
    Microsoft's C++ runtime package `Microsoft.VCLibs.x64.14.00.appx`.
 3. On the console, open Dev Home and the **Device Portal** address it shows in a
@@ -140,14 +141,20 @@ signed MSIX:
 4. In Dev Home, select the app, press the View button, choose **View details**
    and set its type to **Game**: as an app it gets only part of the processor
    and memory.
+5. Start the app once: without a ROM it says where to put one. In the Device
+   Portal open **File explorer** → LocalAppData →
+   `io.github.clickingmaster.ssrecomp_…` → **LocalState**, upload your ROM
+   there (any name ending in `.nds`) and start the app again.
 
-The MSIX contains your copy of the game: never share it. It is signed with a
+The ROM is not in the MSIX, but the app's code is made from your copy of the
+game, so do not share it either; it works with that ROM only. It is signed with a
 certificate made on your PC and kept in `xbox/`; later builds use it again and
-install over the old app, keeping the save. The save, the settings and the
-messages (`game.log`, for bug reports) are in the app's `LocalState` folder,
-which the Device Portal's file explorer opens. Play with the controller as on a
+install over the old app, keeping the ROM and the save. The save, the settings
+and the messages (`game.log`, for bug reports) are in the same `LocalState`
+folder. Play with the controller as on a
 PC; B does not leave the game. The same package also installs on Windows 10/11
-after the `.cer` is installed for the Local Machine into "Trusted People".
+after the `.cer` is installed for the Local Machine into "Trusted People" (the
+ROM then goes in `%LOCALAPPDATA%\Packages\io.github.clickingmaster.ssrecomp_…\LocalState`).
 
 The setup program carries this project's source and unpacks it into a folder of
 its own (`~/.local/share/ssrecomp` on Linux, `%LOCALAPPDATA%\ssrecomp` on
