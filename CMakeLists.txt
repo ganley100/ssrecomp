@@ -58,6 +58,9 @@ endif()
 if(SSR_UWP)
     # Xbox One's processor has no AVX2.
     set(SSR_PORTABLE_X86 ON CACHE BOOL "" FORCE)
+    # Code for that processor (AMD Jaguar: AVX, SSE4.2, BMI1, F16C, and its own instruction
+    # scheduling), which the Xbox Series processors also run.
+    add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX>:/clang:-march=btver2>")
 endif()
 
 # melonDS core is the hardware runtime; its own frontend, JIT and GL renderer are not used.

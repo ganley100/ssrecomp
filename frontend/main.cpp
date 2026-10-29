@@ -1149,6 +1149,14 @@ int main(int argc, char** argv)
         std::filesystem::current_path(std::filesystem::u8path(dir), ec);
         if (freopen((dir + "\\game.log").c_str(), "w", stderr))
             setvbuf(stderr, nullptr, _IONBF, 0); // Windows has no line buffering
+        // Frame timings in game.log every 5 seconds, for reports from the console. And the
+        // widescreen 3D's drawing threads: Xbox One's Jaguar runs one thread per core (the
+        // renderer counts on two, as PC processors have), with the emulation and the 3D
+        // thread on two of the cores a game gets.
+        if (!getenv("SSR_PERF")) _putenv_s("SSR_PERF", "1");
+        if (!getenv("SSR_WIDE_THREADS"))
+            _putenv_s("SSR_WIDE_THREADS", std::to_string(std::clamp((int)std::thread::hardware_concurrency() - 2, 1, 4)).c_str());
+        fprintf(stderr, "processor threads: %u\n", std::thread::hardware_concurrency());
         // rom.nds in the package (if it was packed with one) or in that folder, else the
         // first .nds file there, whatever it is called.
         std::string rom;
@@ -2451,6 +2459,15 @@ int main(int argc, char** argv)
         M_RESUME, M_LAYOUT, M_LARGE, M_FPS60, M_FULLSCREEN, M_SMOOTH, M_WIDE, M_WIDELINES, M_SHOWFPS, M_BUTTONS, M_PADTOUCH, M_FAST, M_SAVESTATE, M_LOADSTATE, M_RESET, M_QUIT
     };
     bool fastLock = false;
+#if defined(SSR_UWP) || defined(SSR_LAUNCHER)
+    // On the consoles and TVs these builds are for, the processor may not keep up with every
+    // setting: when frames keep coming late, the costliest are lowered one step at a time
+    // (see where frames are paced), until the player changes one of them in the menu.
+    bool autoDetail = true;
+#else
+    bool autoDetail = false;
+#endif
+    int lateFrames = 0, pacedFrames = 0;
     // World detail choices: the most lines the widescreen 3D is drawn at (192 is the DS's own).
     static const int detailLines[] = { 192, 288, 384, 540, 720, 1080, 1440 };
     const int detailCount = (int)(sizeof(detailLines) / sizeof(detailLines[0]));
@@ -2900,6 +2917,7 @@ int main(int argc, char** argv)
             case M_FPS60:
                 cfg.fps60 = !cfg.fps60;
                 nds->GPU.GPU3D.InterpolationEnabled = cfg.fps60;
+                autoDetail = false; // the player's choice from now on
                 break;
             case M_FULLSCREEN:
                 cfg.fullscreen = !cfg.fullscreen;
@@ -2918,6 +2936,7 @@ int main(int argc, char** argv)
                 break;
             case M_WIDELINES:
                 cfg.wideLines = detailLines[(detailIndex() + (dir < 0 ? detailCount - 1 : 1)) % detailCount];
+                autoDetail = false;
                 break;
             case M_SHOWFPS:
                 cfg.showFps = !cfg.showFps;
@@ -3690,6 +3709,34 @@ int main(int argc, char** argv)
 
             nextTick += (uint64_t)(frameTime * perfFreq);
             uint64_t now = SDL_GetPerformanceCounter();
+            if (autoDetail && speed == 1 && !menu.open && frame > 600)
+            {
+                // Over 4 seconds: more than a fifth of the frames late means the emulation and
+                // drawing take longer than a frame. First the in-between frames go (they draw
+                // the 3D a second time), then the widescreen 3D is drawn at fewer lines.
+                lateFrames += now > nextTick;
+                if (++pacedFrames == 240)
+                {
+                    if (lateFrames > 48)
+                    {
+                        if (cfg.fps60)
+                        {
+                            cfg.fps60 = false;
+                            nds->GPU.GPU3D.InterpolationEnabled = false;
+                            say("FOR SPEED: 60 FPS FRAMES OFF");
+                        }
+                        else if (detailIndex() > 1)
+                        {
+                            cfg.wideLines = detailLines[std::min(detailIndex() - 1, 3)];
+                            say("FOR SPEED: WORLD DETAIL " + std::to_string(cfg.wideLines));
+                        }
+                        else autoDetail = false; // nothing left to lower
+                        fprintf(stderr, "[auto detail] %d of 240 frames late: fps60 %d, wide lines %d\n", lateFrames,
+                            cfg.fps60, cfg.wideLines);
+                    }
+                    lateFrames = pacedFrames = 0;
+                }
+            }
             if (now < nextTick)
             {
                 // Sleep for most of the wait and spin for the last part of a millisecond:
