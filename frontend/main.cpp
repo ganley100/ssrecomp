@@ -2548,6 +2548,15 @@ int main(int argc, char** argv)
     double perfWorst = 0;
     int perfN = 0;
     auto perfNow = []() { return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count(); };
+    // Parts of the scene and present phases (screen analysis, scene choice, audio, handing the
+    // frame to the graphics card), printed on a second line: where those phases spend it.
+    double perfPart[4] = {};
+    auto perfTimed = [&](int part, auto&& work) {
+        if (!perfOn) return work();
+        const double t = perfNow();
+        work();
+        perfPart[part] += perfNow() - t;
+    };
     double perfT = perfNow(), perfFrameStart = perfT;
     auto perfMark = [&](int phase) {
         if (!perfOn) return;
@@ -2569,7 +2578,13 @@ int main(int argc, char** argv)
                 fprintf(stderr, "[perf] input %.2f  emulate %.2f  scene %.2f  compose %.2f  present %.2f  wait %.2f ms; worst frame %.1f ms\n",
                     perfAcc[0] / perfN, perfAcc[1] / perfN, perfAcc[2] / perfN, perfAcc[3] / perfN, perfAcc[4] / perfN,
                     perfAcc[5] / perfN, perfWorst);
+                // (3D: drawing time of the DS-resolution 3D on its own thread, alongside emulate.)
+                auto& soft3d = static_cast<melonDS::SoftRenderer&>(nds->GPU.GetRenderer3D());
+                fprintf(stderr, "[perf parts] screens %.2f  scene choice %.2f  audio %.2f  present call %.2f  3D %.2f ms\n",
+                    perfPart[0] / perfN, perfPart[1] / perfN, perfPart[2] / perfN, perfPart[3] / perfN,
+                    soft3d.RenderMicros.exchange(0) / 1000.0 / perfN);
                 for (double& a : perfAcc) a = 0;
+                for (double& a : perfPart) a = 0;
                 perfN = 0;
                 perfWorst = 0;
             }
@@ -3324,7 +3339,7 @@ int main(int argc, char** argv)
         for (const RcApp* app : focus.bottomApps)
             if (appActive(app->name)) appBottom = true;
         appBottomNow = appBottom;
-        if (top && bot && !paused) focus.Update(top, bot, fieldNow, appBottom);
+        if (top && bot && !paused) perfTimed(0, [&] { focus.Update(top, bot, fieldNow, appBottom); });
         layout.swapped = focus.Swapped();
         // While the touch cursor is in use the bottom screen has to be big enough to aim at.
         if (!merged && focus.mode == 0 && frame < cursorShownUntil) layout.swapped = true;
@@ -3337,7 +3352,8 @@ int main(int argc, char** argv)
             // game stops polling it while its buttons animate between menus.
             const bool writing = saveWriting();
             fieldHeldBySave = writing && fieldActive();
-            Scene picked = pickScene(frame < cursorShownUntil, view.width, screenImages);
+            Scene picked;
+            perfTimed(1, [&] { picked = pickScene(frame < cursorShownUntil, view.width, screenImages); });
             // An application's own layout stays while it fades out: the game is still ending it
             // (and its picture is still what is on the screens) when only a general layout
             // would be chosen, until the overworld runs again or a moment has passed.
@@ -3436,8 +3452,10 @@ int main(int argc, char** argv)
         if (audio && got > 0)
         {
             // Drop audio rather than let latency grow if the queue backs up.
-            if (SDL_GetQueuedAudioSize(audio) < 48000 * 4 / 4)
-                SDL_QueueAudio(audio, audioBuf.data(), got * 4);
+            perfTimed(2, [&] {
+                if (SDL_GetQueuedAudioSize(audio) < 48000 * 4 / 4)
+                    SDL_QueueAudio(audio, audioBuf.data(), got * 4);
+            });
         }
         if (opt.audioStats && got > 0)
         {
@@ -3700,7 +3718,7 @@ int main(int argc, char** argv)
                 touchPad.Apply(held, menuHeld);
                 touchPad.Draw(renderer, held, menuHeld);
             }
-            SDL_RenderPresent(renderer);
+            perfTimed(3, [&] { SDL_RenderPresent(renderer); });
             perfMark(4);
             // Frames shown in the last whole second, for the FPS counter.
             presented++;

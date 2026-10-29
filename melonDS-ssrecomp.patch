@@ -972,10 +972,18 @@ index 08c2208c..c0abc14b 100644
  
      u32 FlushRequest = 0;
 diff --git a/src/GPU3D_Soft.cpp b/src/GPU3D_Soft.cpp
-index 9f6e2d73..bf6abaf7 100644
+index 9f6e2d73..35d364a8 100644
 --- a/src/GPU3D_Soft.cpp
 +++ b/src/GPU3D_Soft.cpp
-@@ -1740,6 +1740,11 @@ void SoftRenderer::VCount144(GPU& gpu)
+@@ -19,6 +19,7 @@
+ #include "GPU3D_Soft.h"
+ 
+ #include <algorithm>
++#include <chrono>
+ #include <stdio.h>
+ #include <string.h>
+ #include "NDS.h"
+@@ -1740,6 +1741,11 @@ void SoftRenderer::VCount144(GPU& gpu)
          Platform::Semaphore_Wait(Sema_RenderDone);
  }
  
@@ -987,7 +995,7 @@ index 9f6e2d73..bf6abaf7 100644
  void SoftRenderer::RenderFrame(GPU& gpu)
  {
      auto textureDirty = gpu.VRAMDirty_Texture.DeriveState(gpu.VRAMMap_Texture, gpu);
-@@ -1752,6 +1757,8 @@ void SoftRenderer::RenderFrame(GPU& gpu)
+@@ -1752,6 +1758,8 @@ void SoftRenderer::RenderFrame(GPU& gpu)
  
      if (RenderThreadRunning.load(std::memory_order_relaxed))
      {
@@ -996,21 +1004,29 @@ index 9f6e2d73..bf6abaf7 100644
          // "Render thread, you're up! Get moving."
          Platform::Semaphore_Post(Sema_RenderStart);
      }
-@@ -1790,7 +1797,7 @@ void SoftRenderer::RenderThreadFunc(GPU& gpu)
+@@ -1789,8 +1797,11 @@ void SoftRenderer::RenderThreadFunc(GPU& gpu)
+         }
          else
          {
++            const auto start = std::chrono::steady_clock::now();
              ClearBuffers(gpu);
 -            RenderPolygons(gpu, true, &gpu.GPU3D.RenderPolygonRAM[0], gpu.GPU3D.RenderNumPolygons);
 +            RenderPolygons(gpu, true, ThreadPolygons, ThreadNumPolygons);
++            RenderMicros += (u64)std::chrono::duration_cast<std::chrono::microseconds>(
++                std::chrono::steady_clock::now() - start).count();
          }
  
          // Tell the main thread that we're done rendering
 diff --git a/src/GPU3D_Soft.h b/src/GPU3D_Soft.h
-index a201c6a6..0cbc750b 100644
+index a201c6a6..dbf12368 100644
 --- a/src/GPU3D_Soft.h
 +++ b/src/GPU3D_Soft.h
-@@ -46,6 +46,7 @@ public:
+@@ -44,8 +44,11 @@ public:
+     void SetupRenderThread(GPU& gpu);
+     void EnableRenderThread();
      void StopRenderThread();
++    // ssrecomp: microseconds the render thread has spent drawing, for the frontend's timings.
++    std::atomic<u64> RenderMicros{0};
  private:
      friend void GPU3D::DoSavestate(Savestate* file) noexcept;
 +    friend struct WideAccess; // ssrecomp: the widescreen renderer shares pixel shading
