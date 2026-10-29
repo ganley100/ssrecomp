@@ -19,8 +19,9 @@
 - **Xbox One and TV speed:** the Xbox app is compiled for the Xbox One's processor
   and uses its cores better for the widescreen 3D. When the console or TV cannot
   keep up, the Xbox and TV apps turn off the 60 fps in-between frames and then
-  lower the world detail on their own (a message says so; changing either in the
-  pause menu stops this). Frame timings go to `game.log` for reports.
+  lower the world detail on their own, and raise them again when there is time to
+  spare (a message says so; changing either in the pause menu stops this). Frame
+  timings go to `game.log` for reports.
 - The game can be built with clang-cl on Windows, as well as with MSYS2's GCC.
 - The setup program for macOS can now check for updates and update itself from
   the setup window and with `--update`, matching Linux and Windows.

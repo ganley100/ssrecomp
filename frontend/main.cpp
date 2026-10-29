@@ -2467,7 +2467,11 @@ int main(int argc, char** argv)
 #else
     bool autoDetail = false;
 #endif
-    int lateFrames = 0, pacedFrames = 0;
+    // Per 4-second window: frames whose work took nearly a whole frame or more, and the
+    // work time summed; whether a raise has been undone (then no more raises).
+    int slowFrames = 0, pacedFrames = 0;
+    double workSum = 0;
+    bool raised = false, raiseUndone = false;
     // World detail choices: the most lines the widescreen 3D is drawn at (192 is the DS's own).
     static const int detailLines[] = { 192, 288, 384, 540, 720, 1080, 1440 };
     const int detailCount = (int)(sizeof(detailLines) / sizeof(detailLines[0]));
@@ -2554,6 +2558,7 @@ int main(int argc, char** argv)
 
     while (running && !Host::StopRequested)
     {
+        const uint64_t frameWorkStart = opt.headless ? 0 : SDL_GetPerformanceCounter();
         if (perfOn)
         {
             double t = perfNow();
@@ -3711,30 +3716,58 @@ int main(int argc, char** argv)
             uint64_t now = SDL_GetPerformanceCounter();
             if (autoDetail && speed == 1 && !menu.open && frame > 600)
             {
-                // Over 4 seconds: more than a fifth of the frames late means the emulation and
-                // drawing take longer than a frame. First the in-between frames go (they draw
-                // the 3D a second time), then the widescreen 3D is drawn at fewer lines.
-                lateFrames += now > nextTick;
+                // What a frame's work took (not whether it started late: after one slow
+                // frame, such as a loading hitch, the next ones catch up and would all count).
+                const double work = (double)(now - frameWorkStart) / perfFreq;
+                slowFrames += work > frameTime * 0.95;
+                workSum += work;
                 if (++pacedFrames == 240)
                 {
-                    if (lateFrames > 48)
+                    const double share = workSum / pacedFrames / frameTime; // of a frame, on average
+                    std::string change;
+                    if (slowFrames > 48)
                     {
+                        // More than a fifth of the frames too slow: first the in-between frames go
+                        // (they draw the 3D a second time), then the widescreen 3D gets fewer lines.
+                        if (raised) raiseUndone = true;
                         if (cfg.fps60)
                         {
                             cfg.fps60 = false;
                             nds->GPU.GPU3D.InterpolationEnabled = false;
-                            say("FOR SPEED: 60 FPS FRAMES OFF");
+                            change = "FOR SPEED: 60 FPS FRAMES OFF";
                         }
                         else if (detailIndex() > 1)
                         {
                             cfg.wideLines = detailLines[std::min(detailIndex() - 1, 3)];
-                            say("FOR SPEED: WORLD DETAIL " + std::to_string(cfg.wideLines));
+                            change = "FOR SPEED: WORLD DETAIL " + std::to_string(cfg.wideLines);
                         }
-                        else autoDetail = false; // nothing left to lower
-                        fprintf(stderr, "[auto detail] %d of 240 frames late: fps60 %d, wide lines %d\n", lateFrames,
-                            cfg.fps60, cfg.wideLines);
                     }
-                    lateFrames = pacedFrames = 0;
+                    else if (!slowFrames && share < 0.6 && !raiseUndone)
+                    {
+                        // Plenty of time to spare: back up, the other way round, to the defaults
+                        // (720 lines, then the in-between frames). If that is too much, the step
+                        // down undoes it and the setting stays there.
+                        if (cfg.wideLines < 720)
+                        {
+                            cfg.wideLines = detailLines[std::min(detailIndex() + 1, 4)];
+                            change = "WORLD DETAIL " + std::to_string(cfg.wideLines);
+                        }
+                        else if (!cfg.fps60)
+                        {
+                            cfg.fps60 = true;
+                            nds->GPU.GPU3D.InterpolationEnabled = true;
+                            change = "60 FPS FRAMES ON";
+                        }
+                        if (!change.empty()) raised = true;
+                    }
+                    if (!change.empty())
+                    {
+                        say(change);
+                        fprintf(stderr, "[auto detail] %d of 240 frames slow, work %.0f%% of a frame: fps60 %d, wide lines %d\n",
+                            slowFrames, share * 100, cfg.fps60, cfg.wideLines);
+                    }
+                    slowFrames = pacedFrames = 0;
+                    workSum = 0;
                 }
             }
             if (now < nextTick)
