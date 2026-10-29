@@ -36,6 +36,9 @@
 #include <atomic>
 #include <jni.h>
 #endif
+#if defined(__ANDROID__) && defined(SSR_LAUNCHER)
+#include "launchmenu.h"
+#endif
 #ifdef SSR_UWP
 #include <windows.h>
 #include <fileapifromapp.h>
@@ -1094,7 +1097,36 @@ int main(int argc, char** argv)
             freopen("log.txt", "w", stderr);
         setvbuf(stderr, nullptr, _IOLBF, 0);
         setenv("SSR_PERF", "1", 0);
+#ifdef SSR_LAUNCHER
+        // The TV launcher (tools/android/tv_launcher.py) holds neither the ROM nor the
+        // game's code: its start menu finds the player's ROM on the device. The save and
+        // the settings go in the folder ssrecomp on the shared storage, so that they stay
+        // when the app is uninstalled (an update signed with another key needs that).
+        SDL_SetHint(SDL_HINT_ANDROID_TRAP_BACK_BUTTON, "1");
+        if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) != 0)
+        {
+            fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
+            return 1;
+        }
+        // Reading the Download folder and USB sticks (the app targets Android 10, whose
+        // storage rules allow it, see tools/android/tv/AndroidManifest.xml).
+        if (!SDL_AndroidRequestPermission("android.permission.WRITE_EXTERNAL_STORAGE"))
+            fprintf(stderr, "no permission to read the shared storage\n");
+        std::string saveDir = "/storage/emulated/0/ssrecomp";
+        std::error_code ec;
+        std::filesystem::create_directories(saveDir, ec);
+        if (ec) saveDir = dir ? dir : ".";
+        std::string last;
+        std::getline(std::ifstream(saveDir + "/last-rom.txt"), last);
+        const std::string rom = LaunchMenu::Run(ext ? ext : "", last);
+        if (rom.empty()) return 0;
+        std::ofstream(saveDir + "/last-rom.txt") << rom << "\n";
+        fprintf(stderr, "ROM: %s\n", rom.c_str());
+        androidArgs = { "ssrecomp", rom, "--save", saveDir + "/soulsilver.sav", "--config", saveDir + "/ssrecomp.cfg",
+                        "--fullscreen", "--interp" };
+#else
         androidArgs = { "ssrecomp", "rom.nds", "--save", std::string(dir ? dir : ".") + "/soulsilver.sav", "--fullscreen" };
+#endif
         for (auto& a : androidArgs) androidArgv.push_back(a.data());
         argc = (int)androidArgv.size();
         argv = androidArgv.data();
@@ -2458,7 +2490,7 @@ int main(int argc, char** argv)
         toast = msg;
         toastUntil = frame + 120;
     };
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && !defined(SSR_LAUNCHER) // (the launcher is not rebuilt on a PC)
     bool updateSaid = false;
     UpdateCheck::Start();
 #endif
@@ -2473,6 +2505,10 @@ int main(int argc, char** argv)
     bool touchPadUsed = false, touchMenuHeld = false, prevTouchMenu = false;
 #ifdef __ANDROID__
     touchPadUsed = true;
+#ifdef SSR_LAUNCHER
+    // A TV has no touch screen: no on-screen controls over the picture there.
+    touchPadUsed = SDL_GetNumTouchDevices() > 0;
+#endif
 #endif
     // Touch cursor for devices without a touchscreen: moved with the right stick or IJKL,
     // pressed with the right trigger or Space.
@@ -3457,7 +3493,7 @@ int main(int argc, char** argv)
             canvas.Text(outW - Canvas::TextWidth(">>", sc) - 4 * sc, cornerY + 4 * sc, ">>", sc, 0xFFFFFFFF);
             overlayUsed = true;
         }
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && !defined(SSR_LAUNCHER)
         if (!updateSaid && UpdateCheck::g_done)
         {
             updateSaid = true;

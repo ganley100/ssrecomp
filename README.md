@@ -115,6 +115,17 @@ When a newer version is released, the app says so at start (it asks GitHub,
 its only use of the internet): update the setup program, press **Build for
 Android** again and install the new APK over the old one.
 
+**Android TV (launcher, no PC needed):** GitHub also builds a TV version without
+any of the game in it (Actions tab → **Android TV launcher** → the newest run →
+`SoulSilver-ssrecomp-android-tv`). Install the APK on the TV (with a file manager
+or an app such as "Downloader", allowing unknown apps when asked), put your ROM in
+the TV's **Download** folder or on a USB stick, and start **SoulSilver** from the
+home screen: its menu lists the ROMs it finds; choose one with the remote or a
+controller. Like the Xbox launcher it runs the game on the ordinary emulator
+(slower; a TV's processor may struggle) while the single-screen and widescreen
+views still follow the game. The save and settings are in the folder `ssrecomp` on
+the TV's storage, so they stay when the app is reinstalled.
+
 ### Xbox (experimental, untested on a console)
 
 The Xbox version is a UWP app built on a Windows PC by the same setup program,

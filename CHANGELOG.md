@@ -13,6 +13,9 @@
   GitHub, for players without a Windows PC; it plays your ROM on the ordinary
   emulator (slower). The single-screen and widescreen views still switch with the
   game's screens: it watches the game's code, read from your ROM on the console.
+- **Android TV launcher:** a TV version without the game in it, built by GitHub,
+  with a start menu that finds your ROM in the Download folder or on a USB stick;
+  it plays with a remote or a controller and keeps the save on the TV's storage.
 - The game can be built with clang-cl on Windows, as well as with MSYS2's GCC.
 - The setup program for macOS can now check for updates and update itself from
   the setup window and with `--update`, matching Linux and Windows.

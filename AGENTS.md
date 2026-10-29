@@ -55,7 +55,7 @@ Xbox (a UWP app built with clang-cl, `-DSSR_UWP=ON`) is experimental.
 | `ssrecomp_setup.py` | the setup program (Tk GUI and CLI): builds from the user's ROM, Android APK, self-update, portable mode |
 | `setup.sh`, `run.sh` | building from the decompilation; starting the game (writes `game.log`) |
 | `tools/package_setup.py`, `make_appimage.sh` | packaging the setup program with PyInstaller |
-| `tools/android/` | APK packing around SDL's Java code |
+| `tools/android/` | APK packing around SDL's Java code; `tv_launcher.py` and `tv/` make the Android TV launcher (no game code; start menu in `frontend/launchmenu.h`) |
 | `tools/xbox/` | the Xbox build: finding Visual Studio, the UWP environment, MSIX layout, manifest and signing (`tests/clang_cl_smoke.py` checks it on Windows) |
 | `layouts/soulsilver-us.json` | section addresses and code/data map, so a plain ROM can be recompiled without the decompilation |
 
