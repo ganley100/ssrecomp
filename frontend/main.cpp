@@ -1154,9 +1154,41 @@ int main(int argc, char** argv)
         // renderer counts on two, as PC processors have), with the emulation and the 3D
         // thread on two of the cores a game gets.
         if (!getenv("SSR_PERF")) _putenv_s("SSR_PERF", "1");
+        // The console reports all 8 cores, but a game gets only some of them: Windows' CPU
+        // sets may say how many (those allocated to this process).
+        // With more busy threads than cores, the 3D threads take turns and the emulation
+        // waits for them (measured: a DS-size 3D frame took 14-23 ms beside 4 drawing threads).
+        int cores = 0, total = 0, mine = 0, taken = 0;
+        {
+            ULONG len = 0;
+            GetSystemCpuSetInformation(nullptr, 0, &len, GetCurrentProcess(), 0);
+            std::vector<char> buf(len);
+            if (len && GetSystemCpuSetInformation((PSYSTEM_CPU_SET_INFORMATION)buf.data(), len, &len, GetCurrentProcess(), 0))
+                for (ULONG off = 0; off < len;)
+                {
+                    const auto* info = (const SYSTEM_CPU_SET_INFORMATION*)(buf.data() + off);
+                    if (!info->Size) break;
+                    if (info->Type == CpuSetInformation)
+                    {
+                        total++;
+                        if (info->CpuSet.AllocatedToTargetProcess) mine++;
+                        else if (info->CpuSet.Allocated || info->CpuSet.Parked) taken++;
+                    }
+                    off += info->Size;
+                }
+            cores = mine;
+        }
+        fprintf(stderr, "processor threads: %u; CPU sets: %d, allocated to this app %d, taken or parked %d\n",
+            std::thread::hardware_concurrency(), total, mine, taken);
         if (!getenv("SSR_WIDE_THREADS"))
-            _putenv_s("SSR_WIDE_THREADS", std::to_string(std::clamp((int)std::thread::hardware_concurrency() - 2, 1, 4)).c_str());
-        fprintf(stderr, "processor threads: %u\n", std::thread::hardware_concurrency());
+        {
+            // The emulation and the DS-size 3D thread each need a core of their own; the
+            // widescreen drawing gets what is left, and 2 when the count is unknown (the 8
+            // reported cores are not all the game's).
+            const int wide = cores > 0 ? std::clamp(cores - 2, 1, 4) : 2;
+            _putenv_s("SSR_WIDE_THREADS", std::to_string(wide).c_str());
+            fprintf(stderr, "widescreen drawing threads: %d\n", wide);
+        }
         // rom.nds in the package (if it was packed with one) or in that folder, else the
         // first .nds file there, whatever it is called.
         std::string rom;
